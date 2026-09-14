@@ -21,6 +21,7 @@ body{
     color: var(--primary-color);
     min-height: 100vh;
     background-color: var(--background-color);
+    animation: fadeInload 1s ease-out forwards;
 }
 
 .nav-bar{
@@ -208,4 +209,24 @@ body{
 
 .submit-button button:active {
     transform: scale(0.98);
+}
+
+.redirect-signup{
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+    font-weight: 500;
+}
+
+@keyframes fadeInload{
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
