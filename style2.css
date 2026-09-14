@@ -215,9 +215,62 @@ body{
     display: flex;
     flex-direction: row;
     align-items: center;
+    justify-content: center;
     gap: 10px;
     margin-top: 10px;
     font-weight: 500;
+}
+
+@media (max-width: 400px) {
+
+    .navbar {
+        height: 64px;
+        padding: 0 20px;
+    }
+
+    .nav-links {
+        gap: 12px;
+    }
+
+    .nav-links a:not(.nav-button) {
+        display: none;
+    }
+
+    .logo {
+        font-size: 18px;
+    }
+
+    .logo-icon {
+        width: 34px;
+        height: 34px;
+        font-size: 17px;
+    }
+
+    .login-text h1{
+    margin-bottom: 10px;
+    color: var(--primary-color);
+    font-size: 150%;
+    font-weight: 900;
+    letter-spacing: 1px;
+    }
+
+    .auth-page {
+        min-height: calc(100vh - 64px);
+        padding: 30px 15px;
+    }
+
+    .auth-card {
+        padding: 30px 22px;
+    }
+
+    .auth-header h1 {
+        font-size: 24px;
+    }
+
+    .name-group {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
 }
 
 @keyframes fadeInload{
