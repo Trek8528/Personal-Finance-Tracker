@@ -1,0 +1,271 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap');
+:root{
+    --accent-color: #A1CCA5;
+    --base-color:#1E3F20;
+    --input-color: #709775;
+    --box-color: #FFFAFA;
+    --primary-color: #111D13;
+    --background-color: #F8FAFC; 
+    --background-color: #0a0f0b;
+}
+
+*{
+    padding: 0;
+    margin: 0;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    box-sizing: border-box;
+}
+
+.nav-bar{
+    width: 100%;
+    height: 72px;
+    display: flex;
+    padding: 0 20px 0 20px;
+    align-items: center;
+    justify-content: space-between;
+    /* position: fixed;
+    top:0;
+    left:0;
+    z-index: 1000; */
+    background-color: var(--primary-color);
+    border-bottom: 1px solid rgba(161, 204, 165, 0.15);
+}
+
+.logo{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--box-color);
+    text-decoration: none;
+    font-size:21px;
+    font-weight: 500;
+}
+
+.navbar-logo{
+    width: 38px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--accent-color);
+    border-radius: 9px;
+    font-size: 20px;
+    font-weight: bold;
+}
+.navbar-logo img{
+    height: 38px;
+    width: 38px;
+}
+
+.nav-links{
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    min-width: 40px;
+}
+
+.nav-links a{
+    color: aliceblue;
+    text-decoration: none;
+    font-size: 14px;
+    transition: 0.2ms ease;
+}
+
+.nav-links a:hover{
+    color:var(--accent-color)
+}
+
+.nav-links .nav-button{
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    background-color: var(--accent-color);
+    color: var(--primary-color);
+    border: 1px solid black;
+    border-radius: 50%;
+    font-size: medium;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background-color 0.3s ease, color 0.3s ease, transform 0.2s ease;
+}
+
+.nav-button svg{
+    height: 100%;
+    width: 100%;
+}
+
+.nav-links .nav-button:hover{
+    background-color: var(--base-color);
+    color:var(--accent-color);
+}
+
+.nav-left{
+    display: flex;
+    align-items: center;
+    gap:10px
+
+}
+
+.sidebarbutton button{
+    width: 35px;
+    text-decoration: none;
+    background-color: transparent;
+    fill: var(--accent-color);
+    border: none;
+    cursor: pointer;
+    transition: fill 0.3s ease, transform 0.2s ease;
+}
+
+.sidebarbutton button:hover{
+    fill:var(--base-color);
+    transform: scale(1.15);
+}
+
+.sidebar{
+    text-align: center;
+    width: 200px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    display: flex;
+    flex-direction:column;
+    justify-content:space-between;
+    height: 100vh;
+    padding:20px 0px 20px 0px ;
+    background-color: var(--primary-color);
+    font-size: 25px;
+    font-weight: 500;
+    flex: 0 0 auto;
+
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+    z-index: 999;
+}
+
+.sidebar.active{
+    transform: translateX(0);
+}
+
+.sidebar a{
+    text-decoration: none;
+    font-display: none;
+    color: var(--box-color);
+}
+
+.sidebar div svg{
+    fill: var(--box-color);
+    width: 70px;
+    cursor: pointer;
+}
+
+.close-btn{
+    gap: 30px;
+}
+
+.sidebar .normal-tabs{
+    height: calc(100vh - 100px);
+    display: flex;
+    flex-direction: column;
+    justify-content:start;
+    row-gap: 5px;
+}
+
+.sidebar .option{
+    height: 3rem;
+    gap: 0px;
+    display:flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content:center;
+}
+
+
+.sidebar .normal-tabs svg{
+    width:auto;
+    display: flex;
+    height: 34px;
+}
+
+.close-btn{
+    height: 72px;
+    display: flex;
+    flex-direction: row-reverse;
+    align-self: flex-end;
+}
+
+.close-btn svg:hover{
+    fill: var(--accent-color);
+}
+
+.sidebar .option:hover{
+    background-color: var(--accent-color);
+}
+
+
+.sidebar .option:hover  svg path, .sidebar .option:hover span{
+    background-color: var(--accent-color);
+    color: var(--primary-color);
+    fill: var(--primary-color);
+}
+
+.sidebar .selected{
+    background-color: var(--accent-color);
+}
+
+.logout-tab a{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: row;
+    gap: 0px;
+}
+
+.logout-tab span{
+    display: flex;
+    line-height: 1;
+}
+
+.logout-tab a svg{
+    height: 34px;
+    width: auto;
+}
+
+
+.main-root{
+    margin-top: 50px;
+    height: calc(100vh - 72px);
+    display: flex;
+    flex-direction: column ;
+    align-items: center;
+}
+
+
+@media (max-width: 300px) {
+    .nav-bar {
+        padding: 0 12px; /* Reduce navbar side padding */
+    }
+
+    .nav-left {
+        gap: 8px; /* Tighten space between sidebar icon and logo */
+    }
+
+    /* Hide the text "Finance Tracker", leaving only the logo icon */
+    .logo span:last-child {
+        display: none; 
+    }
+
+    .nav-links {
+        gap: 12px; /* Reduce space between links */
+    }
+
+    .nav-links a {
+        font-size: 13px; /* Slightly reduce font size */
+    }
+    .sidebar {
+        width: 100%; /* Takes up the full width of the screen */
+        font-size: 22px; /* Marginally drops font size to fit mobile displays nicely */
+    }
+}

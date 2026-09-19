@@ -35,6 +35,7 @@ body{
     border-bottom: 1px solid rgba(161, 204, 165, 0.15);
 }
 
+
 .logo{
     display: flex;
     align-items: center;
@@ -231,7 +232,7 @@ body{
   transition: opacity 0.2s ease;
 }
 
-@media (max-width: 400px) {
+@media (max-width: 390px) {
 
     .navbar {
         height: 64px;
