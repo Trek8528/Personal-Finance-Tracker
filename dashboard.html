@@ -106,12 +106,70 @@
     </aside>
 
     <main class="main-root">
-      <h1>Welcome to Dashboard</h1>
-      <p>
-        Your content will automatically push to the right when the sidebar
-        opens.
-      </p>
+      <section id="view-dashboard" class="view-section actives">
+        <h1 class="page-title">Dashboard</h1>
+          <div class="summary-cards  card-grid">
+            <div class="card ">
+              <span class="card-label">Balance</span>
+              <span class="card-amount balance">25000/-</span>
+            </div>
+            <div class="card">
+              <span class="card-label">Income</span>
+              <span class="card-amount income">45000/-</span>
+            </div>
+            <div class="card">
+              <span class="card-label">Expenses</span>
+              <span class="card-amount expenses">15000/-</span>
+            </div>
+          </div>
+        
+        
+        <div class="dashboard-grid card-grid">
+          <div class="spending-overview">
+            <div class="card-overlay">
+              <h1 class="chart-label">Spending Overview</h1>
+              <div id="pie-chartcard">
+                <canvas id="pie-chart"></canvas>
+              </div>
+            </div>
+          </div>
+          <div class="recent-transactions card-grid">
+            <h1 class="recent-label">Recent Transactions</h1>
+          <div class="overall-recent-transactions">    
+              <div class="transactions">
+                <div class="recent-transactions-title-and-date">
+                  <span>Netflix</span>
+                  <span>08 Sept</span>
+                </div>
+                <div class="recent-transaction-amount">
+                  <span>-250/-</span>
+                </div>
+              </div>           
+              <div class="transactions">
+                <div class="recent-transactions-title-and-date">
+                  <span>Dining</span>
+                  <span>08 Sept</span>
+                </div>
+                <div class="recent-transaction-amount">
+                  <span>-2500/-</span>
+                </div>
+              </div>
+
+              <div class="transactions">
+                <div class="recent-transactions-title-and-date">
+                  <span>Bills</span>
+                  <span>08 Sept</span>
+                </div>
+                <div class="recent-transaction-amount">
+                  <span>-5000/-</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
     </main>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="dashboard.js"></script>
   </body>
 </html>

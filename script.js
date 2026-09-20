@@ -2,7 +2,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const signupform = document.querySelector(".signup form");
   const loginform = document.querySelector(".login form");
   const errormsg = document.querySelector(".error-msg");
-
   const showError = (input, message) => {
     let errorElement = input.parentElement.querySelector(".error-msg");
     if (!errorElement) {

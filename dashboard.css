@@ -17,16 +17,17 @@
 }
 
 .nav-bar{
+    position: fixed;
     width: 100%;
     height: 72px;
     display: flex;
     padding: 0 20px 0 20px;
     align-items: center;
     justify-content: space-between;
-    /* position: fixed;
+    position: fixed;
     top:0;
     left:0;
-    z-index: 1000; */
+    z-index: 1000;
     background-color: var(--primary-color);
     border-bottom: 1px solid rgba(161, 204, 165, 0.15);
 }
@@ -235,15 +236,159 @@
 
 
 .main-root{
-    margin-top: 50px;
-    height: calc(100vh - 72px);
     display: flex;
-    flex-direction: column ;
-    align-items: center;
+    flex-direction: column;
+    align-items: center;       /* Centers the dashboard section horizontally */
+    justify-content: center;
+    margin: 4rem auto 0 auto;  /* Removes margin-left: 50px and centers the layout */
+    padding: 0 20px;           /* Prevents cards from touching screen edges on mobile */
+    width: 100vw;
+}
+
+/* .view-section{
+    display: none;
+} */
+
+.actives{
+    width: 100vw;
+    padding-bottom: 40px;
+    max-width: 1000px;
+}
+
+.page-title{
+    font-size: 3rem;
+    font-weight: 700;
+    color: var(--base-color);
+    margin-bottom: 35px;
+    
+}
+
+.summary-cards{
+    text-align: center;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 20px;
+    padding: 1rem;
+    background-color: #FFFAFA;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    margin-bottom: 30px;            
+    border-radius: 20px;
+}
+
+.card{
+    display: grid;
+    justify-content: center;
+    flex-direction: column;
+    height: 150px;
+    width: 200px;
+    padding: 1rem;
+    background-color: #daf6da;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    border-radius: 20px;
+}
+
+.card-label {
+    font-size: x-large;
+    font-weight: 600;
+    color: var(--input-color);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+}
+
+.card-amount {
+    font-size: 24px;
+    font-weight: 700;
+}
+
+#pie-chart{
+    position: relative;
+
 }
 
 
-@media (max-width: 300px) {
+.dashboard-grid{
+    display: grid;
+    grid-template-columns: minmax(220px, 7fr) minmax(220px, 3fr);
+    min-height: auto;
+    gap: 20px;
+    padding: 20px;
+    padding: 1rem;
+    background-color: #fff;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    border-radius: 20px;
+}
+
+.chart-label{
+    font-size: x-large;
+    text-align: center;
+    margin-bottom: 5px;
+    color: var(--base-color);
+    font-weight: 700;
+}
+
+.spending-overview{
+    width: auto;
+    --bg: #e8e8e8;
+  --contrast: #e2e0e0;
+  --grey: #93a1a1;
+  position: relative;
+  padding: 10px;
+  background-color: var(--bg);
+  border-radius: 35px;
+  box-shadow: rgba(50, 50, 93, 0.25) 0px 50px 100px -20px, rgba(0, 0, 0, 0.3) 0px 30px 60px -30px, rgba(10, 37, 64, 0.35) 0px -2px 6px 0px inset;
+}
+
+
+
+.recent-label{
+    font-size: x-large;
+    text-align: center;
+    margin-bottom: 5px;
+    color: var(--base-color);
+    font-weight: 700;
+}
+
+.recent-transactions{
+    max-height: 20em;
+    --bg: #e8e8e8;
+  --contrast: #e2e0e0;
+  --grey: #93a1a1;
+  position: relative;
+  padding: 10px;
+  background-color: var(--bg);
+  border-radius: 35px;
+  box-shadow: rgba(50, 50, 93, 0.25) 0px 50px 100px -20px, rgba(0, 0, 0, 0.3) 0px 30px 60px -30px, rgba(10, 37, 64, 0.35) 0px -2px 6px 0px inset;
+  display: flex;
+    flex-direction: column;
+    justify-content: space-evenly;
+}
+
+.transactions{
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-evenly;
+    margin-bottom: 20px;
+}
+
+.recent-transaction-amount span{
+    color:var(--accent-color);
+}
+
+.transactions span{
+    font-size: large;
+    font-weight: 600;
+    color:var(--base-color);
+}
+
+.recent-transactions-title-and-date{
+    display: flex;
+    flex-direction: column;
+}
+
+
+
+@media (max-width: 400px) {
     .nav-bar {
         padding: 0 12px; /* Reduce navbar side padding */
     }
@@ -252,10 +397,10 @@
         gap: 8px; /* Tighten space between sidebar icon and logo */
     }
 
-    /* Hide the text "Finance Tracker", leaving only the logo icon */
-    .logo span:last-child {
-        display: none; 
+    .nav-links a{
+        display: none;
     }
+
 
     .nav-links {
         gap: 12px; /* Reduce space between links */
@@ -267,5 +412,25 @@
     .sidebar {
         width: 100%; /* Takes up the full width of the screen */
         font-size: 22px; /* Marginally drops font size to fit mobile displays nicely */
+    }
+
+    .page-title{
+        font-size: 2rem;
+    }
+
+    .dashboard-grid{
+        grid-template-columns: 1fr;
+    }
+
+    .card{
+    display: grid;
+    justify-content: center;
+    flex-direction: column;
+    height: 100px;
+    width: 150px;
+    padding: 1rem;
+    background-color: #daf6da;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    border-radius: 20px;
     }
 }
