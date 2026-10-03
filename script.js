@@ -113,22 +113,50 @@ document.addEventListener("DOMContentLoaded", () => {
     email.addEventListener("input", function(){
         const emailVal= email.value.trim();
         const ValidEmail= /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,6}$/.test(emailVal);
-
-        if(!ValidEmail){
-            email.setCustomValidity("Invalid email");
-        }else{
-            email.setCustomValidity('');
-        }
+        email.setCustomValidity(ValidEmail ? '' : "Invalid email");
     });
 
-    password.addEventListener("input",function(){
+    password.addEventListener("input", function(){
         const passwordVal= password.value.trim();
         const ValidPassword= /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>]).+$/.test(passwordVal);
-        if(!ValidPassword){
-            password.setCustomValidity("Password must contain one special character and one number");
-        }else{
-            password.setCustomValidity('');
-        }
+        password.setCustomValidity(ValidPassword ? '' : "Password must contain a letter, a number and a special character");
+    });
+
+    // ── Submit: redirect to dashboard ──
+    loginform.addEventListener("submit", function(e) {
+      e.preventDefault();
+      if (!loginform.checkValidity()) { loginform.reportValidity(); return; }
+
+      // Save email to profile so the dashboard can greet by name
+      const profile = JSON.parse(localStorage.getItem('ft_profile') ?? 'null') ?? {};
+      profile.email = profile.email || email.value.trim();
+      localStorage.setItem('ft_profile', JSON.stringify(profile));
+
+      window.location.href = "dashboard.html";
+    });
+  }
+
+  // ── Signup submit: save name then go to login ──
+  if (signupform) {
+    signupform.addEventListener("submit", function(e) {
+      e.preventDefault();
+      if (!signupform.checkValidity()) { signupform.reportValidity(); return; }
+
+      const fname = document.querySelector("#firstname").value.trim();
+      const lname = document.querySelector("#lastname").value.trim();
+      const emailVal = document.querySelector("#email").value.trim();
+
+      // Pre-populate profile so dashboard shows the user's real name
+      const existing = JSON.parse(localStorage.getItem('ft_profile') ?? 'null') ?? {};
+      const profile = {
+        ...existing,
+        name: `${fname} ${lname}`.trim(),
+        email: emailVal,
+        since: existing.since || new Date().toISOString().slice(0, 10)
+      };
+      localStorage.setItem('ft_profile', JSON.stringify(profile));
+
+      window.location.href = "login.html";
     });
   }
 });
