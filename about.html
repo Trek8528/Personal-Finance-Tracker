@@ -20,12 +20,23 @@
           <span>Finance Tracker</span>
         </a>
       </div>
-      <div class="nav-links">
+      <div class="nav-links" id="navLinks">
         <a href="index.html" class="nav-link">Home</a>
         <a href="about.html" class="nav-link active">About Us</a>
         <a href="login.html" class="btn-primary" style="padding: 10px 22px;">Login</a>
         <a href="signup.html" class="btn-primary" style="background: transparent; border: 1.5px solid var(--accent); color: var(--accent);">Get Started</a>
       </div>
+      <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle navigation menu" aria-expanded="false">
+        <svg class="menu-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+        <svg class="close-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
     </nav>
 
     <!-- ───── PAGE HEADER ───── -->
@@ -119,9 +130,8 @@
                 <path d="M20 110 Q20 70 60 70 Q100 70 100 110" fill="var(--accent)"/>
               </svg>
             </div>
-            <h3 class="team-name">Alex Chen</h3>
-            <p class="team-role">Frontend Developer</p>
-            <p class="team-bio">Crafts intuitive interfaces with React & modern CSS. Obsessed with micro-interactions and accessibility.</p>
+            <h3 class="team-name"></h3>
+            <p class="team-role"></p>
           </article>
           <article class="team-card">
             <div class="team-avatar">
@@ -131,9 +141,9 @@
                 <path d="M20 110 Q20 70 60 70 Q100 70 100 110" fill="var(--accent)"/>
               </svg>
             </div>
-            <h3 class="team-name">Priya Sharma</h3>
-            <p class="team-role">Backend Developer</p>
-            <p class="team-bio">Builds robust APIs with Java & Spring Boot. Advocates for clean architecture and test-driven development.</p>
+            <h3 class="team-name">Aryan Bhoir</h3>
+            <p class="team-role"></p>
+            <p class="team-bio"></p>
           </article>
           <article class="team-card">
             <div class="team-avatar">
@@ -143,9 +153,22 @@
                 <path d="M20 110 Q20 70 60 70 Q100 70 100 110" fill="var(--accent)"/>
               </svg>
             </div>
-            <h3 class="team-name">Marcus Johnson</h3>
-            <p class="team-role">Database Engineer</p>
-            <p class="team-bio">Optimizes PostgreSQL for performance & reliability. Believes data integrity is non-negotiable.</p>
+            <h3 class="team-name">Atharva Agashe</h3>
+            <p class="team-role"></p>
+            <p class="team-bio"></p>
+          </article>
+          <article class="team-card">
+            <div class="team-avatar">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+                <circle cx="60" cy="60" r="60" fill="var(--accent-glow)"/>
+                <circle cx="60" cy="45" r="20" fill="var(--accent)"/>
+                <path d="M20 110 Q20 70 60 70 Q100 70 100 110" fill="var(--accent)"/>
+              </svg>
+            </div>
+            <h3 class="team-name">Mit Bagmar</h3>
+            <p class="team-role">Database Handler</p>
+            <p class="team-bio">Made ER and Schema for the existing Webpage. Used relational database for storage
+            </p>
           </article>
         </div>
       </div>
@@ -252,5 +275,46 @@
         </div>
       </div>
     </footer>
+
+    <script>
+      // Mobile Navigation Toggle
+      (function() {
+        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+        const navLinks = document.getElementById('navLinks');
+
+        if (mobileMenuBtn && navLinks) {
+          mobileMenuBtn.addEventListener('click', function() {
+            const isExpanded = this.getAttribute('aria-expanded') === 'true';
+            this.setAttribute('aria-expanded', !isExpanded);
+            navLinks.classList.toggle('active');
+          });
+
+          // Close menu when clicking a link
+          navLinks.querySelectorAll('a').forEach(link => {
+            link.addEventListener('click', function() {
+              navLinks.classList.remove('active');
+              mobileMenuBtn.setAttribute('aria-expanded', 'false');
+            });
+          });
+
+          // Close menu when clicking outside
+          document.addEventListener('click', function(e) {
+            if (!mobileMenuBtn.contains(e.target) && !navLinks.contains(e.target)) {
+              navLinks.classList.remove('active');
+              mobileMenuBtn.setAttribute('aria-expanded', 'false');
+            }
+          });
+
+          // Close menu on escape key
+          document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && navLinks.classList.contains('active')) {
+              navLinks.classList.remove('active');
+              mobileMenuBtn.setAttribute('aria-expanded', 'false');
+              mobileMenuBtn.focus();
+            }
+          });
+        }
+      })();
+    </script>
   </body>
 </html>
