@@ -2,7 +2,7 @@
    FINANCE TRACKER — dashboard.js
    All logic: Navigation, Transactions, Budget,
    Reports (Charts), Goals, Settings
-   Data stored in localStorage
+   Data stored in MySQL via Spring Boot API
    ═══════════════════════════════════════════════ */
 
 'use strict';
@@ -21,17 +21,52 @@ const monthLabel = (ym) => {
 const fmtDate = (d) => new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 
 /* ══════════════════════════════════════
-   STORAGE
+   STORAGE (in-memory cache backed by API)
 ══════════════════════════════════════ */
-const DB = {
-  get: (k, def = []) => JSON.parse(localStorage.getItem(k) ?? 'null') ?? def,
-  set: (k, v) => localStorage.setItem(k, JSON.stringify(v)),
-  txns:    () => DB.get('ft_txns', []),
-  budgets: () => DB.get('ft_budgets', []),
-  goals:   () => DB.get('ft_goals', []),
-  profile: () => DB.get('ft_profile', { name: '', email: '', since: today() }),
-  prefs:   () => DB.get('ft_prefs', { currency: 'INR', theme: 'dark', notifs: true }),
+const cache = {
+  txns: [],
+  budgets: [],
+  goals: [],
+  profile: { name: '', email: '', since: today() },
+  prefs: { currency: 'INR', theme: 'dark', notifs: true },
 };
+
+const DB = {
+  txns:    () => cache.txns,
+  budgets: () => cache.budgets,
+  goals:   () => cache.goals,
+  profile: () => cache.profile,
+  prefs:   () => cache.prefs,
+};
+
+function applyUser(user) {
+  cache.profile = {
+    name: user.name || '',
+    email: user.email || '',
+    since: user.since || today()
+  };
+  cache.prefs = {
+    currency: user.currency || 'INR',
+    theme: user.theme || 'dark',
+    notifs: user.notifs !== false
+  };
+}
+
+function num(v) { return Number(v); }
+
+async function loadAll() {
+  const [txns, budgets, goals, me] = await Promise.all([
+    api('/transactions'),
+    api('/budgets'),
+    api('/goals'),
+    api('/auth/me')
+  ]);
+  cache.txns = txns.map(t => ({ ...t, amount: num(t.amount), note: t.note || '' }));
+  cache.budgets = budgets.map(b => ({ ...b, limit: num(b.limit) }));
+  cache.goals = goals.map(g => ({ ...g, target: num(g.target), saved: num(g.saved), deadline: g.deadline || '' }));
+  applyUser(me);
+}
+
 
 /* ══════════════════════════════════════
    TOAST
@@ -329,7 +364,7 @@ window.openDeleteTxn = function(id) {
 };
 
 // Transaction form submit
-document.getElementById('txnForm').addEventListener('submit', e => {
+document.getElementById('txnForm').addEventListener('submit', async e => {
   e.preventDefault();
   const id     = document.getElementById('txnId').value;
   const date   = document.getElementById('txnDate').value;
@@ -343,18 +378,23 @@ document.getElementById('txnForm').addEventListener('submit', e => {
     showToast('Please fill all required fields.', 'error'); return;
   }
 
-  let txns = DB.txns();
-  if (id) {
-    txns = txns.map(t => t.id === id ? { ...t, date, type, description: desc, category: cat, amount, note } : t);
-    showToast('Transaction updated!');
-  } else {
-    txns.unshift({ id: uid(), date, type, description: desc, category: cat, amount, note, createdAt: new Date().toISOString() });
-    showToast('Transaction added!');
+  const payload = { date, type, description: desc, category: cat, amount, note };
+  try {
+    if (id) {
+      const updated = await api(`/transactions/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+      cache.txns = cache.txns.map(t => t.id === id ? { ...updated, amount: num(updated.amount), note: updated.note || '' } : t);
+      showToast('Transaction updated!');
+    } else {
+      const created = await api('/transactions', { method: 'POST', body: JSON.stringify(payload) });
+      cache.txns.unshift({ ...created, amount: num(created.amount), note: created.note || '' });
+      showToast('Transaction added!');
+    }
+    closeModal('txnModalOverlay');
+    renderTransactions();
+    checkBudgetAlerts(cat, type);
+  } catch (err) {
+    showToast(err.message, 'error');
   }
-  DB.set('ft_txns', txns);
-  closeModal('txnModalOverlay');
-  renderTransactions();
-  checkBudgetAlerts(cat, type);
 });
 
 ['closeTxnModal','cancelTxnModal'].forEach(id => {
@@ -450,7 +490,7 @@ window.openDeleteBudget = function(id) {
   openModal('deleteModalOverlay');
 };
 
-document.getElementById('budgetForm').addEventListener('submit', e => {
+document.getElementById('budgetForm').addEventListener('submit', async e => {
   e.preventDefault();
   const id    = document.getElementById('budgetId').value;
   const cat   = document.getElementById('budgetCat').value;
@@ -458,21 +498,22 @@ document.getElementById('budgetForm').addEventListener('submit', e => {
   const limit = parseFloat(document.getElementById('budgetLimit').value);
   if (!cat || !month || isNaN(limit) || limit <= 0) { showToast('Fill all fields.', 'error'); return; }
 
-  let budgets = DB.budgets();
-  if (id) {
-    budgets = budgets.map(b => b.id === id ? { ...b, category: cat, month, limit } : b);
-    showToast('Budget updated!');
-  } else {
-    // Prevent duplicate for same category+month
-    if (budgets.find(b => b.category === cat && b.month === month)) {
-      showToast('A budget for this category/month already exists.', 'warning'); return;
+  const payload = { category: cat, month, limit };
+  try {
+    if (id) {
+      const updated = await api(`/budgets/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+      cache.budgets = cache.budgets.map(b => b.id === id ? { ...updated, limit: num(updated.limit) } : b);
+      showToast('Budget updated!');
+    } else {
+      const created = await api('/budgets', { method: 'POST', body: JSON.stringify(payload) });
+      cache.budgets.push({ ...created, limit: num(created.limit) });
+      showToast('Budget created!');
     }
-    budgets.push({ id: uid(), category: cat, month, limit });
-    showToast('Budget created!');
+    closeModal('budgetModalOverlay');
+    renderBudget();
+  } catch (err) {
+    showToast(err.message, err.message.includes('already exists') ? 'warning' : 'error');
   }
-  DB.set('ft_budgets', budgets);
-  closeModal('budgetModalOverlay');
-  renderBudget();
 });
 
 ['closeBudgetModal','cancelBudgetModal'].forEach(id => {
@@ -713,28 +754,37 @@ window.openDeleteGoal = function(id) {
   openModal('deleteModalOverlay');
 };
 
-document.getElementById('goalForm').addEventListener('submit', e => {
+document.getElementById('goalForm').addEventListener('submit', async e => {
   e.preventDefault();
   const id       = document.getElementById('goalId').value;
   const name     = document.getElementById('goalName').value.trim();
   const target   = parseFloat(document.getElementById('goalTarget').value);
   const saved    = parseFloat(document.getElementById('goalSaved').value) || 0;
   const icon     = document.getElementById('goalIcon').value;
-  const deadline = document.getElementById('goalDeadline').value;
+  const deadline = document.getElementById('goalDeadline').value || null;
 
   if (!name || isNaN(target) || target <= 0) { showToast('Fill all required fields.', 'error'); return; }
 
-  let goals = DB.goals();
-  if (id) {
-    goals = goals.map(g => g.id === id ? { ...g, name, target, saved, icon, deadline } : g);
-    showToast('Goal updated!');
-  } else {
-    goals.push({ id: uid(), name, target, saved, icon, deadline, createdAt: new Date().toISOString() });
-    showToast('Goal added!');
+  const payload = { name, target, saved, icon, deadline };
+  try {
+    if (id) {
+      const updated = await api(`/goals/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+      cache.goals = cache.goals.map(g => g.id === id ? {
+        ...updated, target: num(updated.target), saved: num(updated.saved), deadline: updated.deadline || ''
+      } : g);
+      showToast('Goal updated!');
+    } else {
+      const created = await api('/goals', { method: 'POST', body: JSON.stringify(payload) });
+      cache.goals.push({
+        ...created, target: num(created.target), saved: num(created.saved), deadline: created.deadline || ''
+      });
+      showToast('Goal added!');
+    }
+    closeModal('goalModalOverlay');
+    renderGoals();
+  } catch (err) {
+    showToast(err.message, 'error');
   }
-  DB.set('ft_goals', goals);
-  closeModal('goalModalOverlay');
-  renderGoals();
 });
 
 ['closeGoalModal','cancelGoalModal'].forEach(id => {
@@ -744,25 +794,32 @@ document.getElementById('goalForm').addEventListener('submit', e => {
 /* ══════════════════════════════════════
    DELETE CONFIRM
 ══════════════════════════════════════ */
-document.getElementById('confirmDelete').addEventListener('click', () => {
-  if (txnDeleteId) {
-    DB.set('ft_txns', DB.txns().filter(t => t.id !== txnDeleteId));
-    showToast('Transaction deleted.', 'error');
-    txnDeleteId = null;
-    closeModal('deleteModalOverlay');
-    renderTransactions();
-  } else if (budgetDeleteId) {
-    DB.set('ft_budgets', DB.budgets().filter(b => b.id !== budgetDeleteId));
-    showToast('Budget deleted.', 'error');
-    budgetDeleteId = null;
-    closeModal('deleteModalOverlay');
-    renderBudget();
-  } else if (goalDeleteId) {
-    DB.set('ft_goals', DB.goals().filter(g => g.id !== goalDeleteId));
-    showToast('Goal deleted.', 'error');
-    goalDeleteId = null;
-    closeModal('deleteModalOverlay');
-    renderGoals();
+document.getElementById('confirmDelete').addEventListener('click', async () => {
+  try {
+    if (txnDeleteId) {
+      await api(`/transactions/${txnDeleteId}`, { method: 'DELETE' });
+      cache.txns = cache.txns.filter(t => t.id !== txnDeleteId);
+      showToast('Transaction deleted.', 'error');
+      txnDeleteId = null;
+      closeModal('deleteModalOverlay');
+      renderTransactions();
+    } else if (budgetDeleteId) {
+      await api(`/budgets/${budgetDeleteId}`, { method: 'DELETE' });
+      cache.budgets = cache.budgets.filter(b => b.id !== budgetDeleteId);
+      showToast('Budget deleted.', 'error');
+      budgetDeleteId = null;
+      closeModal('deleteModalOverlay');
+      renderBudget();
+    } else if (goalDeleteId) {
+      await api(`/goals/${goalDeleteId}`, { method: 'DELETE' });
+      cache.goals = cache.goals.filter(g => g.id !== goalDeleteId);
+      showToast('Goal deleted.', 'error');
+      goalDeleteId = null;
+      closeModal('deleteModalOverlay');
+      renderGoals();
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
   }
 });
 
@@ -801,47 +858,80 @@ function getInitials(name) {
   return name.split(' ').slice(0,2).map(n=>n[0]).join('').toUpperCase();
 }
 
-document.getElementById('saveProfileBtn').addEventListener('click', () => {
+document.getElementById('saveProfileBtn').addEventListener('click', async () => {
   const name  = document.getElementById('profileName').value.trim();
   const email = document.getElementById('profileEmail').value.trim();
-  const old   = DB.profile();
-  DB.set('ft_profile', { ...old, name, email });
-  document.getElementById('profileAvatar').textContent = getInitials(name);
-  showToast('Profile saved!');
-  updateGreeting();
+  try {
+    const user = await api('/users/me', { method: 'PUT', body: JSON.stringify({ name, email }) });
+    applyUser(user);
+    document.getElementById('profileAvatar').textContent = getInitials(name);
+    showToast('Profile saved!');
+    updateGreeting();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
 });
 
-document.getElementById('savePrefsBtn').addEventListener('click', () => {
+document.getElementById('savePrefsBtn').addEventListener('click', async () => {
   const prefs = {
     currency: document.getElementById('prefCurrency').value,
     theme:    document.getElementById('prefTheme').value,
     notifs:   document.getElementById('prefNotifs').checked
   };
-  DB.set('ft_prefs', prefs);
-  showToast('Preferences saved!');
+  try {
+    const user = await api('/users/me/prefs', { method: 'PUT', body: JSON.stringify(prefs) });
+    applyUser(user);
+    showToast('Preferences saved!');
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
 });
 
-document.getElementById('changePwdBtn').addEventListener('click', () => {
+document.getElementById('changePwdBtn').addEventListener('click', async () => {
   const curr    = document.getElementById('currPwd').value;
   const newP    = document.getElementById('newPwd').value;
   const confirm = document.getElementById('confirmPwd').value;
   if (!curr || !newP || !confirm) { showToast('Fill all password fields.', 'error'); return; }
   if (newP !== confirm) { showToast('Passwords do not match!', 'error'); return; }
   if (newP.length < 6) { showToast('Password must be at least 6 characters.', 'warning'); return; }
-  showToast('Password changed! (demo — not persisted)');
-  document.getElementById('currPwd').value = '';
-  document.getElementById('newPwd').value  = '';
-  document.getElementById('confirmPwd').value = '';
+  try {
+    await api('/users/me/password', {
+      method: 'PUT',
+      body: JSON.stringify({ currentPassword: curr, newPassword: newP })
+    });
+    showToast('Password changed!');
+    document.getElementById('currPwd').value = '';
+    document.getElementById('newPwd').value  = '';
+    document.getElementById('confirmPwd').value = '';
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
 });
 
-document.getElementById('clearDataBtn').addEventListener('click', () => {
+document.getElementById('clearDataBtn').addEventListener('click', async () => {
   if (confirm('This will delete ALL transactions, budgets and goals. Are you sure?')) {
-    localStorage.removeItem('ft_txns');
-    localStorage.removeItem('ft_budgets');
-    localStorage.removeItem('ft_goals');
-    showToast('All data cleared.', 'warning');
-    renderSettings();
+    try {
+      await api('/users/me/data', { method: 'DELETE' });
+      cache.txns = [];
+      cache.budgets = [];
+      cache.goals = [];
+      showToast('All data cleared.', 'warning');
+      renderSettings();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
   }
+});
+
+function logout() {
+  clearSession();
+  window.location.href = 'login.html';
+}
+document.querySelectorAll('a[href="login.html"]').forEach(a => {
+  a.addEventListener('click', (e) => {
+    e.preventDefault();
+    logout();
+  });
 });
 
 /* ══════════════════════════════════════
@@ -882,48 +972,19 @@ function escHtml(str) {
 }
 
 /* ══════════════════════════════════════
-   SEED DATA (first-time users)
-══════════════════════════════════════ */
-function seedIfEmpty() {
-  if (DB.txns().length > 0) return;
-
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth()+1).padStart(2,'0');
-
-  const txns = [
-    { id: uid(), date: `${y}-${m}-10`, type: 'expense', description: 'Swiggy', category: 'Food',         amount: 320,  note: 'Dinner', createdAt: new Date().toISOString() },
-    { id: uid(), date: `${y}-${m}-09`, type: 'expense', description: 'College fees', category: 'Education', amount: 2000, note: '',   createdAt: new Date().toISOString() },
-    { id: uid(), date: `${y}-${m}-08`, type: 'income',  description: 'Freelance payment', category: 'Freelance', amount: 5000, note: 'Web project', createdAt: new Date().toISOString() },
-    { id: uid(), date: `${y}-${m}-07`, type: 'expense', description: 'Netflix', category: 'Entertainment', amount: 649, note: '', createdAt: new Date().toISOString() },
-    { id: uid(), date: `${y}-${m}-05`, type: 'income',  description: 'Salary', category: 'Salary', amount: 40000, note: '', createdAt: new Date().toISOString() },
-    { id: uid(), date: `${y}-${m}-03`, type: 'expense', description: 'Electricity Bill', category: 'Bills', amount: 1500, note: '', createdAt: new Date().toISOString() },
-    { id: uid(), date: `${y}-${m}-02`, type: 'expense', description: 'Zomato', category: 'Food', amount: 450, note: 'Lunch', createdAt: new Date().toISOString() },
-    { id: uid(), date: `${y}-${m}-01`, type: 'expense', description: 'Uber', category: 'Travel', amount: 280, note: '', createdAt: new Date().toISOString() },
-  ];
-  DB.set('ft_txns', txns);
-
-  DB.set('ft_budgets', [
-    { id: uid(), category: 'Food',          month: `${y}-${m}`, limit: 5000 },
-    { id: uid(), category: 'Travel',        month: `${y}-${m}`, limit: 2000 },
-    { id: uid(), category: 'Entertainment', month: `${y}-${m}`, limit: 1000 },
-  ]);
-
-  DB.set('ft_goals', [
-    { id: uid(), name: 'Laptop',         target: 60000, saved: 45000, icon: '💻', deadline: `${y+1}-03-01`, createdAt: new Date().toISOString() },
-    { id: uid(), name: 'Emergency Fund', target: 30000, saved: 12000, icon: '🛡️', deadline: `${y+1}-12-31`, createdAt: new Date().toISOString() },
-  ]);
-
-  DB.set('ft_profile', { name: 'Smart Person', email: 'smart@example.com', since: today() });
-}
-
-/* ══════════════════════════════════════
    INIT
 ══════════════════════════════════════ */
-document.addEventListener('DOMContentLoaded', () => {
-  seedIfEmpty();
-  updateGreeting();
-  renderDashboard();
-  // Set default budget month picker
+document.addEventListener('DOMContentLoaded', async () => {
+  if (!getToken()) {
+    window.location.href = 'login.html';
+    return;
+  }
   document.getElementById('budgetMonthPicker').value = thisMonth();
+  try {
+    await loadAll();
+    updateGreeting();
+    renderDashboard();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
 });

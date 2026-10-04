@@ -122,41 +122,54 @@ document.addEventListener("DOMContentLoaded", () => {
         password.setCustomValidity(ValidPassword ? '' : "Password must contain a letter, a number and a special character");
     });
 
-    // ── Submit: redirect to dashboard ──
-    loginform.addEventListener("submit", function(e) {
+    loginform.addEventListener("submit", async function(e) {
       e.preventDefault();
       if (!loginform.checkValidity()) { loginform.reportValidity(); return; }
 
-      // Save email to profile so the dashboard can greet by name
-      const profile = JSON.parse(localStorage.getItem('ft_profile') ?? 'null') ?? {};
-      profile.email = profile.email || email.value.trim();
-      localStorage.setItem('ft_profile', JSON.stringify(profile));
-
-      window.location.href = "dashboard.html";
+      try {
+        const data = await api('/auth/login', {
+          method: 'POST',
+          body: JSON.stringify({
+            email: email.value.trim(),
+            password: password.value
+          })
+        });
+        setSession(data.token, data.user);
+        window.location.href = "dashboard.html";
+      } catch (err) {
+        if (errormsg) errormsg.textContent = err.message;
+        else alert(err.message);
+      }
     });
   }
 
-  // ── Signup submit: save name then go to login ──
   if (signupform) {
-    signupform.addEventListener("submit", function(e) {
+    signupform.addEventListener("submit", async function(e) {
       e.preventDefault();
       if (!signupform.checkValidity()) { signupform.reportValidity(); return; }
 
       const fname = document.querySelector("#firstname").value.trim();
       const lname = document.querySelector("#lastname").value.trim();
       const emailVal = document.querySelector("#email").value.trim();
+      const phoneVal = document.querySelector("#phone").value.trim();
+      const passwordVal = document.querySelector("#password").value;
 
-      // Pre-populate profile so dashboard shows the user's real name
-      const existing = JSON.parse(localStorage.getItem('ft_profile') ?? 'null') ?? {};
-      const profile = {
-        ...existing,
-        name: `${fname} ${lname}`.trim(),
-        email: emailVal,
-        since: existing.since || new Date().toISOString().slice(0, 10)
-      };
-      localStorage.setItem('ft_profile', JSON.stringify(profile));
-
-      window.location.href = "login.html";
+      try {
+        await api('/auth/signup', {
+          method: 'POST',
+          body: JSON.stringify({
+            firstName: fname,
+            lastName: lname,
+            phone: phoneVal,
+            email: emailVal,
+            password: passwordVal
+          })
+        });
+        window.location.href = "login.html";
+      } catch (err) {
+        if (errormsg) errormsg.textContent = err.message;
+        else alert(err.message);
+      }
     });
   }
 });

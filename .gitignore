@@ -1,0 +1,8 @@
+backend/target/
+backend/.idea/
+backend/*.iml
+backend/.mvn/wrapper/maven-wrapper.jar
+node_modules/
+.DS_Store
+*.log
+.env
