@@ -10,7 +10,86 @@
 /* ══════════════════════════════════════
    UTILITY HELPERS
 ══════════════════════════════════════ */
-const fmt = (n) => `₹${Number(n).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+/* ══════════════════════════════════════
+   CURRENCY & EXCHANGE RATES
+   Base storage in Database is INR.
+══════════════════════════════════════ */
+const CURRENCY_CONFIG = {
+  INR: { symbol: '₹', locale: 'en-IN', rate: 1, name: 'INR' },
+  USD: { symbol: '$', locale: 'en-US', rate: 1 / 86.5, name: 'USD' },
+  EUR: { symbol: '€', locale: 'de-DE', rate: 1 / 93.0, name: 'EUR' },
+  GBP: { symbol: '£', locale: 'en-GB', rate: 1 / 111.0, name: 'GBP' }
+};
+
+function getCurrencyConfig() {
+  const code = (cache.prefs.currency || localStorage.getItem('ft_currency') || 'INR').toUpperCase();
+  return CURRENCY_CONFIG[code] || CURRENCY_CONFIG.INR;
+}
+
+// Convert from base currency (INR) to user-selected display currency
+function fromBase(n) {
+  const cfg = getCurrencyConfig();
+  return (Number(n) || 0) * cfg.rate;
+}
+
+// Convert from display currency back to base currency (INR) for DB storage
+function toBase(n) {
+  const cfg = getCurrencyConfig();
+  return (Number(n) || 0) / cfg.rate;
+}
+
+// Formats amount in base currency (INR), automatically converts and adds symbol
+const fmt = (n) => {
+  const cfg = getCurrencyConfig();
+  const converted = fromBase(n);
+  return `${cfg.symbol}${Number(converted).toLocaleString(cfg.locale, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2
+  })}`;
+};
+
+// Formats an amount that is already converted (for chart values, etc.)
+const fmtConverted = (n) => {
+  const cfg = getCurrencyConfig();
+  return `${cfg.symbol}${Number(n).toLocaleString(cfg.locale, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2
+  })}`;
+};
+
+function updateCurrencySymbols() {
+  const cfg = getCurrencyConfig();
+  document.querySelectorAll('.currency-symbol').forEach(el => {
+    el.textContent = cfg.symbol;
+  });
+}
+
+function applyCurrency(code, saveBackend = false) {
+  const c = CURRENCY_CONFIG[code] ? code : 'INR';
+  cache.prefs.currency = c;
+  localStorage.setItem('ft_currency', c);
+
+  const sel = document.getElementById('prefCurrency');
+  if (sel) sel.value = c;
+  const navSel = document.getElementById('navCurrencySelect');
+  if (navSel) navSel.value = c;
+
+  updateCurrencySymbols();
+
+  if (activeView === 'dashboard') renderDashboard();
+  if (activeView === 'transactions') renderTransactions();
+  if (activeView === 'budget') renderBudget();
+  if (activeView === 'reports') renderReports();
+  if (activeView === 'goals') renderGoals();
+
+  if (saveBackend && getToken()) {
+    api('/users/me/prefs', {
+      method: 'PUT',
+      body: JSON.stringify(cache.prefs)
+    }).catch(() => {});
+  }
+}
+
 const uid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
 const today = () => new Date().toISOString().slice(0, 10);
 const thisMonth = () => new Date().toISOString().slice(0, 7);
@@ -46,10 +125,162 @@ function applyUser(user) {
     since: user.since || today()
   };
   cache.prefs = {
-    currency: user.currency || 'INR',
-    theme: user.theme || 'dark',
+    currency: user.currency || localStorage.getItem('ft_currency') || 'INR',
+    theme: user.theme || localStorage.getItem('ft_theme') || 'dark',
     notifs: user.notifs !== false
   };
+  applyTheme(cache.prefs.theme);
+  applyCurrency(cache.prefs.currency);
+  applyAvatar();
+}
+
+/* ══════════════════════════════════════
+   THEME (LIGHT / DARK)
+══════════════════════════════════════ */
+function getChartThemeColors() {
+  const isLight = (document.documentElement.getAttribute('data-theme') || cache.prefs.theme) === 'light';
+  return {
+    text: isLight ? '#4e6e53' : '#8cad8e',
+    grid: isLight ? 'rgba(30, 112, 57, 0.08)' : 'rgba(161, 204, 165, 0.08)',
+    border: isLight ? '#ffffff' : '#162019',
+    emptyPie: isLight ? '#d8eadb' : '#2d5c30'
+  };
+}
+
+function applyTheme(theme, saveBackend = false) {
+  const t = theme === 'light' ? 'light' : 'dark';
+  cache.prefs.theme = t;
+  localStorage.setItem('ft_theme', t);
+  document.documentElement.setAttribute('data-theme', t);
+  document.body.classList.toggle('light-theme', t === 'light');
+
+  const icon = document.getElementById('themeToggleIcon');
+  if (icon) icon.textContent = t === 'light' ? '🌙' : '☀️';
+
+  const prefThemeEl = document.getElementById('prefTheme');
+  if (prefThemeEl) prefThemeEl.value = t;
+
+  if (activeView === 'dashboard') renderDashboard();
+  if (activeView === 'reports') renderReports();
+
+  if (saveBackend && getToken()) {
+    api('/users/me/prefs', {
+      method: 'PUT',
+      body: JSON.stringify(cache.prefs)
+    }).catch(() => {});
+  }
+}
+
+/* ══════════════════════════════════════
+   PROFILE AVATAR (PHOTO & INITIALS)
+══════════════════════════════════════ */
+function getAvatarStorageKey() {
+  const email = cache.profile.email || localStorage.getItem('ft_user_email') || 'user';
+  return `ft_avatar_${email}`;
+}
+
+function getStoredAvatar() {
+  return localStorage.getItem(getAvatarStorageKey());
+}
+
+function applyAvatar() {
+  const avatarData = getStoredAvatar();
+  const profileAvatar = document.getElementById('profileAvatar');
+  const profileAvatarImg = document.getElementById('profileAvatarImg');
+  const removeAvatarBtn = document.getElementById('removeAvatarBtn');
+  const navAvatarImg = document.getElementById('navAvatarImg');
+  const navProfileSvg = document.getElementById('navProfileSvg');
+
+  if (profileAvatar) {
+    profileAvatar.textContent = getInitials(cache.profile.name);
+  }
+
+  if (avatarData) {
+    if (profileAvatarImg) {
+      profileAvatarImg.src = avatarData;
+      profileAvatarImg.style.display = 'block';
+    }
+    if (profileAvatar) {
+      profileAvatar.style.display = 'none';
+    }
+    if (removeAvatarBtn) {
+      removeAvatarBtn.style.display = 'inline-flex';
+    }
+    if (navAvatarImg) {
+      navAvatarImg.src = avatarData;
+      navAvatarImg.style.display = 'block';
+    }
+    if (navProfileSvg) {
+      navProfileSvg.style.display = 'none';
+    }
+  } else {
+    if (profileAvatarImg) {
+      profileAvatarImg.src = '';
+      profileAvatarImg.style.display = 'none';
+    }
+    if (profileAvatar) {
+      profileAvatar.style.display = 'flex';
+    }
+    if (removeAvatarBtn) {
+      removeAvatarBtn.style.display = 'none';
+    }
+    if (navAvatarImg) {
+      navAvatarImg.src = '';
+      navAvatarImg.style.display = 'none';
+    }
+    if (navProfileSvg) {
+      navProfileSvg.style.display = 'block';
+    }
+  }
+}
+
+function processAndSaveAvatar(file) {
+  if (!file || !file.type.startsWith('image/')) {
+    showToast('Please select a valid image file.', 'error');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      const maxDim = 256;
+      let width = img.width;
+      let height = img.height;
+      if (width > height) {
+        if (width > maxDim) {
+          height = Math.round((height * maxDim) / width);
+          width = maxDim;
+        }
+      } else {
+        if (height > maxDim) {
+          width = Math.round((width * maxDim) / height);
+          height = maxDim;
+        }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+
+      try {
+        localStorage.setItem(getAvatarStorageKey(), dataUrl);
+        applyAvatar();
+        showToast('Profile photo updated!');
+      } catch (err) {
+        showToast('Image file is too large to store.', 'error');
+      }
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeAvatar() {
+  localStorage.removeItem(getAvatarStorageKey());
+  applyAvatar();
+  showToast('Profile photo removed.');
 }
 
 function num(v) { return Number(v); }
@@ -180,10 +411,11 @@ function renderDashboard() {
   // Pie chart — spending by category
   const catMap = {};
   txns.filter(t => t.type === 'expense').forEach(t => {
-    catMap[t.category] = (catMap[t.category] || 0) + t.amount;
+    catMap[t.category] = (catMap[t.category] || 0) + fromBase(t.amount);
   });
   const catLabels = Object.keys(catMap);
   const catData   = Object.values(catMap);
+  const chartColors = getChartThemeColors();
 
   if (dashPieChart) dashPieChart.destroy();
   const pieCtx = document.getElementById('pie-chart').getContext('2d');
@@ -193,15 +425,15 @@ function renderDashboard() {
       labels: catLabels.length ? catLabels : ['No Data'],
       datasets: [{
         data: catData.length ? catData : [1],
-        backgroundColor: catLabels.length ? PALETTE.slice(0, catLabels.length) : ['#2d5c30'],
-        borderColor: '#162019', borderWidth: 2, hoverOffset: 6
+        backgroundColor: catLabels.length ? PALETTE.slice(0, catLabels.length) : [chartColors.emptyPie],
+        borderColor: chartColors.border, borderWidth: 2, hoverOffset: 6
       }]
     },
     options: {
       responsive: true,
       plugins: {
-        legend: { position: 'bottom', labels: { color: '#8cad8e', font: { size: 12 } } },
-        tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${fmt(ctx.raw)}` } }
+        legend: { position: 'bottom', labels: { color: chartColors.text, font: { size: 12 } } },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${fmtConverted(ctx.raw)}` } }
       },
       cutout: '60%'
     }
@@ -213,8 +445,8 @@ function renderDashboard() {
     const d = new Date(); d.setMonth(d.getMonth() - i);
     months.push(d.toISOString().slice(0, 7));
   }
-  const incomeByMonth  = months.map(m => txns.filter(t => t.type === 'income'  && t.date.startsWith(m)).reduce((s,t)=>s+t.amount,0));
-  const expenseByMonth = months.map(m => txns.filter(t => t.type === 'expense' && t.date.startsWith(m)).reduce((s,t)=>s+t.amount,0));
+  const incomeByMonth  = months.map(m => txns.filter(t => t.type === 'income'  && t.date.startsWith(m)).reduce((s,t)=>s + fromBase(t.amount), 0));
+  const expenseByMonth = months.map(m => txns.filter(t => t.type === 'expense' && t.date.startsWith(m)).reduce((s,t)=>s + fromBase(t.amount), 0));
 
   if (dashBarChart) dashBarChart.destroy();
   const barCtx = document.getElementById('bar-chart').getContext('2d');
@@ -230,12 +462,12 @@ function renderDashboard() {
     options: {
       responsive: true,
       plugins: {
-        legend: { labels: { color: '#8cad8e', font: { size: 12 } } },
-        tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${fmt(ctx.raw)}` } }
+        legend: { labels: { color: chartColors.text, font: { size: 12 } } },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${fmtConverted(ctx.raw)}` } }
       },
       scales: {
-        x: { ticks: { color: '#8cad8e' }, grid: { color: 'rgba(161,204,165,0.08)' } },
-        y: { ticks: { color: '#8cad8e', callback: v => fmt(v) }, grid: { color: 'rgba(161,204,165,0.08)' } }
+        x: { ticks: { color: chartColors.text }, grid: { color: chartColors.grid } },
+        y: { ticks: { color: chartColors.text, callback: v => fmtConverted(v) }, grid: { color: chartColors.grid } }
       }
     }
   });
@@ -331,6 +563,7 @@ function renderTransactions() {
 
 // Open Add Modal
 document.getElementById('openAddTxnModal').addEventListener('click', () => {
+  updateCurrencySymbols();
   document.getElementById('txnModalTitle').textContent = 'Add Transaction';
   document.getElementById('txnSubmitBtn').textContent  = 'Save Transaction';
   document.getElementById('txnForm').reset();
@@ -343,6 +576,7 @@ document.getElementById('openAddTxnModal').addEventListener('click', () => {
 window.openEditTxn = function(id) {
   const txn = DB.txns().find(t => t.id === id);
   if (!txn) return;
+  updateCurrencySymbols();
   document.getElementById('txnModalTitle').textContent = 'Edit Transaction';
   document.getElementById('txnSubmitBtn').textContent  = 'Update Transaction';
   document.getElementById('txnId').value      = txn.id;
@@ -350,7 +584,7 @@ window.openEditTxn = function(id) {
   document.getElementById('txnType').value    = txn.type;
   document.getElementById('txnDesc').value    = txn.description;
   document.getElementById('txnCat').value     = txn.category;
-  document.getElementById('txnAmount').value  = txn.amount;
+  document.getElementById('txnAmount').value  = Number(fromBase(txn.amount).toFixed(2));
   document.getElementById('txnNote').value    = txn.note || '';
   openModal('txnModalOverlay');
 };
@@ -371,13 +605,14 @@ document.getElementById('txnForm').addEventListener('submit', async e => {
   const type   = document.getElementById('txnType').value;
   const desc   = document.getElementById('txnDesc').value.trim();
   const cat    = document.getElementById('txnCat').value;
-  const amount = parseFloat(document.getElementById('txnAmount').value);
+  const rawAmt = parseFloat(document.getElementById('txnAmount').value);
   const note   = document.getElementById('txnNote').value.trim();
 
-  if (!date || !desc || !cat || isNaN(amount) || amount <= 0) {
+  if (!date || !desc || !cat || isNaN(rawAmt) || rawAmt <= 0) {
     showToast('Please fill all required fields.', 'error'); return;
   }
 
+  const amount = Number(toBase(rawAmt).toFixed(2));
   const payload = { date, type, description: desc, category: cat, amount, note };
   try {
     if (id) {
@@ -449,7 +684,7 @@ function renderBudget() {
         </div>
         <div class="budget-item-footer">
           <span class="budget-remaining ${remaining >= 0 ? 'positive' : 'negative'}">
-            ${remaining >= 0 ? `₹${Math.abs(remaining).toLocaleString('en-IN')} remaining` : `₹${Math.abs(remaining).toLocaleString('en-IN')} over budget`}
+            ${remaining >= 0 ? `${fmt(remaining)} remaining` : `${fmt(Math.abs(remaining))} over budget`}
           </span>
           <div class="action-btns">
             <button class="action-btn" onclick="openEditBudget('${b.id}')" title="Edit">✏️</button>
@@ -465,6 +700,7 @@ function renderBudget() {
 }
 
 document.getElementById('openAddBudgetModal').addEventListener('click', () => {
+  updateCurrencySymbols();
   document.getElementById('budgetModalTitle').textContent = 'Create Budget';
   document.getElementById('budgetForm').reset();
   document.getElementById('budgetId').value = '';
@@ -475,11 +711,12 @@ document.getElementById('openAddBudgetModal').addEventListener('click', () => {
 window.openEditBudget = function(id) {
   const b = DB.budgets().find(x => x.id === id);
   if (!b) return;
+  updateCurrencySymbols();
   document.getElementById('budgetModalTitle').textContent = 'Edit Budget';
   document.getElementById('budgetId').value    = b.id;
   document.getElementById('budgetCat').value   = b.category;
   document.getElementById('budgetMonth').value = b.month;
-  document.getElementById('budgetLimit').value = b.limit;
+  document.getElementById('budgetLimit').value = Number(fromBase(b.limit).toFixed(2));
   openModal('budgetModalOverlay');
 };
 
@@ -492,12 +729,13 @@ window.openDeleteBudget = function(id) {
 
 document.getElementById('budgetForm').addEventListener('submit', async e => {
   e.preventDefault();
-  const id    = document.getElementById('budgetId').value;
-  const cat   = document.getElementById('budgetCat').value;
-  const month = document.getElementById('budgetMonth').value;
-  const limit = parseFloat(document.getElementById('budgetLimit').value);
-  if (!cat || !month || isNaN(limit) || limit <= 0) { showToast('Fill all fields.', 'error'); return; }
+  const id       = document.getElementById('budgetId').value;
+  const cat      = document.getElementById('budgetCat').value;
+  const month    = document.getElementById('budgetMonth').value;
+  const rawLimit = parseFloat(document.getElementById('budgetLimit').value);
+  if (!cat || !month || isNaN(rawLimit) || rawLimit <= 0) { showToast('Fill all fields.', 'error'); return; }
 
+  const limit = Number(toBase(rawLimit).toFixed(2));
   const payload = { category: cat, month, limit };
   try {
     if (id) {
@@ -595,7 +833,7 @@ function renderReports() {
     document.getElementById('rscLargest').textContent    = fmt(all[0].amount);
     document.getElementById('rscLargestDesc').textContent = `${all[0].description} · ${all[0].category}`;
   } else {
-    document.getElementById('rscLargest').textContent    = '₹0';
+    document.getElementById('rscLargest').textContent    = fmt(0);
     document.getElementById('rscLargestDesc').textContent = '';
   }
 
@@ -605,8 +843,10 @@ function renderReports() {
 
   // Monthly bar chart
   const months = [...new Set(txns.map(t => t.date.slice(0,7)))].sort();
-  const mIncome  = months.map(m => txns.filter(t=>t.type==='income'  && t.date.startsWith(m)).reduce((s,t)=>s+t.amount,0));
-  const mExpense = months.map(m => txns.filter(t=>t.type==='expense' && t.date.startsWith(m)).reduce((s,t)=>s+t.amount,0));
+  const mIncome  = months.map(m => txns.filter(t=>t.type==='income'  && t.date.startsWith(m)).reduce((s,t)=>s + fromBase(t.amount), 0));
+  const mExpense = months.map(m => txns.filter(t=>t.type==='expense' && t.date.startsWith(m)).reduce((s,t)=>s + fromBase(t.amount), 0));
+
+  const chartColors = getChartThemeColors();
 
   if (reportMonthlyChart) reportMonthlyChart.destroy();
   const mCtx = document.getElementById('monthlyChart').getContext('2d');
@@ -622,12 +862,12 @@ function renderReports() {
     options: {
       responsive: true,
       plugins: {
-        legend: { labels: { color: '#8cad8e' } },
-        tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${fmt(ctx.raw)}` } }
+        legend: { labels: { color: chartColors.text } },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${fmtConverted(ctx.raw)}` } }
       },
       scales: {
-        x: { ticks: { color: '#8cad8e' }, grid: { color: 'rgba(161,204,165,0.06)' } },
-        y: { ticks: { color: '#8cad8e', callback: v => fmt(v) }, grid: { color: 'rgba(161,204,165,0.06)' } }
+        x: { ticks: { color: chartColors.text }, grid: { color: chartColors.grid } },
+        y: { ticks: { color: chartColors.text, callback: v => fmtConverted(v) }, grid: { color: chartColors.grid } }
       }
     }
   });
@@ -640,16 +880,16 @@ function renderReports() {
     data: {
       labels: sorted.length ? sorted.map(s=>s[0]) : ['No Data'],
       datasets: [{
-        data: sorted.length ? sorted.map(s=>s[1]) : [1],
-        backgroundColor: sorted.length ? PALETTE.slice(0, sorted.length) : ['#2d5c30'],
-        borderColor: '#162019', borderWidth: 2, hoverOffset: 6
+        data: sorted.length ? sorted.map(s=>fromBase(s[1])) : [1],
+        backgroundColor: sorted.length ? PALETTE.slice(0, sorted.length) : [chartColors.emptyPie],
+        borderColor: chartColors.border, borderWidth: 2, hoverOffset: 6
       }]
     },
     options: {
       responsive: true,
       plugins: {
-        legend: { position: 'bottom', labels: { color: '#8cad8e', font: { size: 11 } } },
-        tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${fmt(ctx.raw)}` } }
+        legend: { position: 'bottom', labels: { color: chartColors.text, font: { size: 11 } } },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${fmtConverted(ctx.raw)}` } }
       },
       cutout: '55%'
     }
@@ -728,6 +968,7 @@ function renderGoals() {
 }
 
 document.getElementById('openAddGoalModal').addEventListener('click', () => {
+  updateCurrencySymbols();
   document.getElementById('goalModalTitle').textContent = 'Add Goal';
   document.getElementById('goalForm').reset();
   document.getElementById('goalId').value = '';
@@ -737,11 +978,12 @@ document.getElementById('openAddGoalModal').addEventListener('click', () => {
 window.openEditGoal = function(id) {
   const g = DB.goals().find(x => x.id === id);
   if (!g) return;
+  updateCurrencySymbols();
   document.getElementById('goalModalTitle').textContent = 'Edit Goal';
   document.getElementById('goalId').value       = g.id;
   document.getElementById('goalName').value     = g.name;
-  document.getElementById('goalTarget').value   = g.target;
-  document.getElementById('goalSaved').value    = g.saved;
+  document.getElementById('goalTarget').value   = Number(fromBase(g.target).toFixed(2));
+  document.getElementById('goalSaved').value    = Number(fromBase(g.saved).toFixed(2));
   document.getElementById('goalIcon').value     = g.icon || '🎯';
   document.getElementById('goalDeadline').value = g.deadline || '';
   openModal('goalModalOverlay');
@@ -756,15 +998,17 @@ window.openDeleteGoal = function(id) {
 
 document.getElementById('goalForm').addEventListener('submit', async e => {
   e.preventDefault();
-  const id       = document.getElementById('goalId').value;
-  const name     = document.getElementById('goalName').value.trim();
-  const target   = parseFloat(document.getElementById('goalTarget').value);
-  const saved    = parseFloat(document.getElementById('goalSaved').value) || 0;
-  const icon     = document.getElementById('goalIcon').value;
-  const deadline = document.getElementById('goalDeadline').value || null;
+  const id        = document.getElementById('goalId').value;
+  const name      = document.getElementById('goalName').value.trim();
+  const rawTarget = parseFloat(document.getElementById('goalTarget').value);
+  const rawSaved  = parseFloat(document.getElementById('goalSaved').value) || 0;
+  const icon      = document.getElementById('goalIcon').value;
+  const deadline  = document.getElementById('goalDeadline').value || null;
 
-  if (!name || isNaN(target) || target <= 0) { showToast('Fill all required fields.', 'error'); return; }
+  if (!name || isNaN(rawTarget) || rawTarget <= 0) { showToast('Fill all required fields.', 'error'); return; }
 
+  const target = Number(toBase(rawTarget).toFixed(2));
+  const saved  = Number(toBase(rawSaved).toFixed(2));
   const payload = { name, target, saved, icon, deadline };
   try {
     if (id) {
@@ -839,10 +1083,11 @@ function renderSettings() {
 
   document.getElementById('profileName').value  = profile.name;
   document.getElementById('profileEmail').value = profile.email;
-  document.getElementById('profileAvatar').textContent = getInitials(profile.name);
+  applyAvatar();
   document.getElementById('prefCurrency').value = prefs.currency;
   document.getElementById('prefTheme').value    = prefs.theme;
   document.getElementById('prefNotifs').checked = prefs.notifs;
+  updateCurrencySymbols();
 
   // Stats
   document.getElementById('statTxns').textContent    = DB.txns().length;
@@ -858,13 +1103,69 @@ function getInitials(name) {
   return name.split(' ').slice(0,2).map(n=>n[0]).join('').toUpperCase();
 }
 
+// Avatar upload & remove event listeners
+const avatarFileInput = document.getElementById('avatarFileInput');
+if (avatarFileInput) {
+  avatarFileInput.addEventListener('change', (e) => {
+    if (e.target.files && e.target.files[0]) {
+      processAndSaveAvatar(e.target.files[0]);
+    }
+  });
+}
+
+const removeAvatarBtn = document.getElementById('removeAvatarBtn');
+if (removeAvatarBtn) {
+  removeAvatarBtn.addEventListener('click', () => {
+    removeAvatar();
+  });
+}
+
+// Nav theme toggle button
+const themeToggleBtn = document.getElementById('themeToggleBtn');
+if (themeToggleBtn) {
+  themeToggleBtn.addEventListener('click', () => {
+    const current = cache.prefs.theme === 'light' ? 'light' : 'dark';
+    const nextTheme = current === 'light' ? 'dark' : 'light';
+    applyTheme(nextTheme, true);
+    showToast(`Switched to ${nextTheme} mode`);
+  });
+}
+
+// Live preview when changing theme dropdown in Settings
+const prefThemeSelect = document.getElementById('prefTheme');
+if (prefThemeSelect) {
+  prefThemeSelect.addEventListener('change', (e) => {
+    applyTheme(e.target.value, false);
+  });
+}
+
+// Nav currency selector
+const navCurrencySelect = document.getElementById('navCurrencySelect');
+if (navCurrencySelect) {
+  navCurrencySelect.addEventListener('change', (e) => {
+    applyCurrency(e.target.value, true);
+    const cfg = getCurrencyConfig();
+    showToast(`Currency converted to ${cfg.name} (${cfg.symbol})`);
+  });
+}
+
+// Live preview when changing currency dropdown in Settings
+const prefCurrencySelect = document.getElementById('prefCurrency');
+if (prefCurrencySelect) {
+  prefCurrencySelect.addEventListener('change', (e) => {
+    applyCurrency(e.target.value, false);
+    const cfg = getCurrencyConfig();
+    showToast(`Currency converted to ${cfg.name} (${cfg.symbol})`);
+  });
+}
+
 document.getElementById('saveProfileBtn').addEventListener('click', async () => {
   const name  = document.getElementById('profileName').value.trim();
   const email = document.getElementById('profileEmail').value.trim();
   try {
     const user = await api('/users/me', { method: 'PUT', body: JSON.stringify({ name, email }) });
     applyUser(user);
-    document.getElementById('profileAvatar').textContent = getInitials(name);
+    applyAvatar();
     showToast('Profile saved!');
     updateGreeting();
   } catch (err) {
@@ -975,6 +1276,13 @@ function escHtml(str) {
    INIT
 ══════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', async () => {
+  // Apply saved theme, currency, and avatar immediately to prevent flash
+  const initialTheme = localStorage.getItem('ft_theme') || 'dark';
+  applyTheme(initialTheme);
+  const initialCurrency = localStorage.getItem('ft_currency') || 'INR';
+  applyCurrency(initialCurrency);
+  applyAvatar();
+
   if (!getToken()) {
     window.location.href = 'login.html';
     return;
