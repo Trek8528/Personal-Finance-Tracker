@@ -1,6 +1,6 @@
 // Auto-detect environment: localhost for local development, Render URL for production/GitHub Pages
 const isLocalHost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
-const CLOUD_API_BASE = 'https://personal-finance-tracker-ypyv.onrender.com/'; // Replace with your actual Render URL if different
+const CLOUD_API_BASE = 'https://personal-finance-tracker-ypyv.onrender.com'; // Replace with your actual Render URL if different
 const API_BASE = isLocalHost ? 'http://localhost:8080/api' : CLOUD_API_BASE;
 
 function getToken() {
