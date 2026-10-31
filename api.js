@@ -1,6 +1,6 @@
 // Auto-detect environment: localhost for local development, Render URL for production/GitHub Pages
 const isLocalHost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
-const CLOUD_API_BASE = 'https://finance-tracker-backend.onrender.com/api'; // Replace with your actual Render URL if different
+const CLOUD_API_BASE = 'https://personal-finance-tracker-ypyv.onrender.com/'; // Replace with your actual Render URL if different
 const API_BASE = isLocalHost ? 'http://localhost:8080/api' : CLOUD_API_BASE;
 
 function getToken() {
@@ -34,8 +34,8 @@ async function api(path, options = {}) {
   try {
     res = await fetch(`${API_BASE}${path}`, { ...options, headers });
   } catch {
-    throw new Error(isLocalHost 
-      ? 'Cannot reach backend server. Make sure Spring Boot is running on port 8080.' 
+    throw new Error(isLocalHost
+      ? 'Cannot reach backend server. Make sure Spring Boot is running on port 8080.'
       : 'Cannot reach backend server. If using free hosting (e.g. Render), it may take ~50 seconds to wake up.');
   }
 
