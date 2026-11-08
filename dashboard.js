@@ -122,8 +122,17 @@ function applyUser(user) {
   cache.profile = {
     name: user.name || '',
     email: user.email || '',
-    since: user.since || today()
+    since: user.since || today(),
+    avatar: user.avatar || ''
   };
+  if (user.email) {
+    localStorage.setItem('ft_user_email', user.email);
+    if (user.avatar) {
+      localStorage.setItem(`ft_avatar_${user.email}`, user.avatar);
+    } else if (user.avatar === null) {
+      localStorage.removeItem(`ft_avatar_${user.email}`);
+    }
+  }
   cache.prefs = {
     currency: user.currency || localStorage.getItem('ft_currency') || 'INR',
     theme: user.theme || localStorage.getItem('ft_theme') || 'dark',
@@ -266,8 +275,21 @@ function processAndSaveAvatar(file) {
 
       try {
         localStorage.setItem(getAvatarStorageKey(), dataUrl);
+        if (cache.profile) cache.profile.avatar = dataUrl;
         applyAvatar();
         showToast('Profile photo updated!');
+
+        // Sync with cloud backend so other devices display the updated photo
+        api('/users/me/avatar', {
+          method: 'PUT',
+          body: JSON.stringify({ avatar: dataUrl })
+        }).then(updated => {
+          if (updated && updated.avatar) {
+            localStorage.setItem(getAvatarStorageKey(), updated.avatar);
+          }
+        }).catch(err => {
+          console.warn('Avatar cloud sync deferred:', err.message);
+        });
       } catch (err) {
         showToast('Image file is too large to store.', 'error');
       }
@@ -279,8 +301,16 @@ function processAndSaveAvatar(file) {
 
 function removeAvatar() {
   localStorage.removeItem(getAvatarStorageKey());
+  if (cache.profile) cache.profile.avatar = '';
   applyAvatar();
   showToast('Profile photo removed.');
+
+  // Sync avatar removal to cloud backend
+  api('/users/me/avatar', {
+    method: 'DELETE'
+  }).catch(err => {
+    console.warn('Avatar cloud deletion deferred:', err.message);
+  });
 }
 
 function num(v) { return Number(v); }

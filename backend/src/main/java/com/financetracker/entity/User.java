@@ -50,6 +50,10 @@ public class User {
     @Builder.Default
     private boolean notifications = true;
 
+    @Lob
+    @Column(columnDefinition = "LONGTEXT")
+    private String avatar;
+
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<Transaction> transactions = new ArrayList<>();

@@ -39,6 +39,16 @@ public class AuthController {
         return authService.updateProfile(authUtils.currentUser(), request);
     }
 
+    @PutMapping("/users/me/avatar")
+    public UserResponse updateAvatar(@RequestBody AvatarUpdateRequest request) {
+        return authService.updateAvatar(authUtils.currentUser(), request);
+    }
+
+    @DeleteMapping("/users/me/avatar")
+    public UserResponse removeAvatar() {
+        return authService.removeAvatar(authUtils.currentUser());
+    }
+
     @PutMapping("/users/me/password")
     public ApiMessage changePassword(@Valid @RequestBody PasswordChangeRequest request) {
         authService.changePassword(authUtils.currentUser(), request);

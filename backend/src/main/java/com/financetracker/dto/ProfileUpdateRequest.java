@@ -6,5 +6,10 @@ import jakarta.validation.constraints.Size;
 
 public record ProfileUpdateRequest(
         @NotBlank @Size(max = 80) String name,
-        @NotBlank @Email String email
-) {}
+        @NotBlank @Email String email,
+        String avatar
+) {
+    public ProfileUpdateRequest(String name, String email) {
+        this(name, email, null);
+    }
+}

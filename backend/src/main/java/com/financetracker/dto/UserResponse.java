@@ -8,5 +8,6 @@ public record UserResponse(
         String since,
         String currency,
         String theme,
-        boolean notifs
+        boolean notifs,
+        String avatar
 ) {}

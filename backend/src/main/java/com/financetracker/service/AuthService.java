@@ -83,6 +83,19 @@ public class AuthService {
         user.setFirstName(parts[0]);
         user.setLastName(parts.length > 1 ? parts[1] : "");
         user.setEmail(email);
+        if (request.avatar() != null) {
+            user.setAvatar(request.avatar());
+        }
+        return toUserResponse(userRepository.save(user));
+    }
+
+    public UserResponse updateAvatar(User user, AvatarUpdateRequest request) {
+        user.setAvatar(request != null ? request.avatar() : null);
+        return toUserResponse(userRepository.save(user));
+    }
+
+    public UserResponse removeAvatar(User user) {
+        user.setAvatar(null);
         return toUserResponse(userRepository.save(user));
     }
 
@@ -124,7 +137,8 @@ public class AuthService {
                 user.getMemberSince().toString(),
                 user.getCurrency(),
                 user.getTheme(),
-                user.isNotifications()
+                user.isNotifications(),
+                user.getAvatar()
         );
     }
 }

@@ -2563,7 +2563,7 @@ textarea.settings-input {
     display: flex;
   }
 
-  .nav-links {
+  .public-nav .nav-links {
     position: fixed;
     top: 68px;
     left: 0;
@@ -2581,32 +2581,84 @@ textarea.settings-input {
     box-shadow: var(--shadow);
   }
 
-  .nav-links.active {
+  .public-nav .nav-links.active {
     transform: translateY(0);
     opacity: 1;
     visibility: visible;
   }
 
-  .nav-links .nav-link,
-  .nav-links .btn-primary,
-  .nav-links .btn-outline {
+  .public-nav .nav-links .nav-link,
+  .public-nav .nav-links .btn-primary,
+  .public-nav .nav-links .btn-outline {
     width: 100%;
     text-align: center;
     padding: 14px 20px;
     font-size: 16px;
   }
 
-  .nav-links .nav-link {
+  .public-nav .nav-links .nav-link {
     border-radius: var(--radius-sm);
   }
 
-  .nav-links .btn-primary {
+  .public-nav .nav-links .btn-primary {
     background: linear-gradient(135deg, var(--accent), #7abf7e);
   }
 
-  .nav-links .btn-outline {
+  .public-nav .nav-links .btn-outline {
     background: transparent;
     border: 1.5px solid var(--border);
+  }
+
+  /* ── Dashboard Nav: always keep profile picture and nav buttons visible on mobile ── */
+  .dashboard-nav .nav-links,
+  .dashboard-nav-links {
+    position: static;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    transform: none;
+    opacity: 1;
+    visibility: visible;
+    width: auto;
+  }
+
+  .dashboard-nav .nav-greeting {
+    display: none;
+  }
+
+  .dashboard-nav .nav-home-text {
+    display: none;
+  }
+
+  .dashboard-nav .nav-home-btn {
+    padding: 8px;
+    width: 38px;
+    height: 38px;
+    min-width: 38px;
+    justify-content: center;
+    border-radius: 50%;
+  }
+
+  .dashboard-nav #navProfileBtn {
+    display: inline-flex !important;
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+    flex-shrink: 0 !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+
+  .dashboard-nav #navAvatarImg {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
   }
 
   .nav-greeting {
@@ -2620,6 +2672,43 @@ textarea.settings-input {
   .nav-home-btn {
     padding: 8px 10px;
   }
+}
+
+/* ── Public Nav: Logged-in Profile Avatar ── */
+.home-nav-profile-btn {
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  border-radius: 50%;
+  background: var(--accent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  text-decoration: none;
+  border: 2px solid rgba(168, 230, 207, 0.4);
+  transition: transform var(--transition), box-shadow var(--transition);
+}
+
+.home-nav-profile-btn:hover {
+  transform: scale(1.08);
+  box-shadow: 0 0 12px var(--accent-glow);
+}
+
+.home-nav-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
+}
+
+.home-nav-avatar-initials {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--primary);
+  text-transform: uppercase;
+  line-height: 1;
 }
 
 @media (max-width: 1024px) {

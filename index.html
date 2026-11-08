@@ -17,19 +17,30 @@
 
 <body>
   <!-- ───── TOP NAV ───── -->
-  <nav class="nav-bar">
+  <nav class="nav-bar public-nav">
     <div class="nav-left">
-      <a href="#" class="logo">
+      <a href="index.html" class="logo">
         <span class="navbar-logo"><img src="11782361.png" alt="Finance Tracker Logo" /></span>
         <span>Finance Tracker</span>
       </a>
     </div>
-    <div class="nav-links">
+    <div class="nav-links" id="navLinks">
       <a href="about.html" class="nav-link">About Us</a>
       <a href="login.html" class="btn-primary" style="padding: 10px 22px;">Login</a>
       <a href="signup.html" class="btn-primary"
         style="background: transparent; border: 1.5px solid var(--accent); color: var(--accent);">Get Started</a>
     </div>
+    <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle navigation menu" aria-expanded="false">
+      <svg class="menu-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="3" y1="6" x2="21" y2="6"></line>
+        <line x1="3" y1="12" x2="21" y2="12"></line>
+        <line x1="3" y1="18" x2="21" y2="18"></line>
+      </svg>
+      <svg class="close-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+    </button>
   </nav>
 
   <!-- ───── HERO SECTION ───── -->
@@ -191,6 +202,32 @@
       </div>
     </div>
   </footer>
+  <script src="api.js"></script>
+  <script src="navbar-auth.js"></script>
+  <script>
+    (function () {
+      const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+      const navLinks = document.getElementById('navLinks');
+      if (mobileMenuBtn && navLinks) {
+        mobileMenuBtn.addEventListener('click', function () {
+          const isOpen = navLinks.classList.toggle('active');
+          mobileMenuBtn.setAttribute('aria-expanded', isOpen);
+          const menuIcon = mobileMenuBtn.querySelector('.menu-icon');
+          const closeIcon = mobileMenuBtn.querySelector('.close-icon');
+          if (menuIcon && closeIcon) {
+            menuIcon.style.display = isOpen ? 'none' : 'block';
+            closeIcon.style.display = isOpen ? 'block' : 'none';
+          }
+        });
+        navLinks.querySelectorAll('a').forEach(link => {
+          link.addEventListener('click', () => {
+            navLinks.classList.remove('active');
+            mobileMenuBtn.setAttribute('aria-expanded', 'false');
+          });
+        });
+      }
+    })();
+  </script>
 </body>
 
 </html>

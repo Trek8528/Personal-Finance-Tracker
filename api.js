@@ -14,13 +14,21 @@ function setSession(token, user) {
     localStorage.setItem('ft_profile', JSON.stringify({
       name: user.name || '',
       email: user.email || '',
-      since: user.since || new Date().toISOString().slice(0, 10)
+      since: user.since || new Date().toISOString().slice(0, 10),
+      avatar: user.avatar || ''
     }));
+    if (user.email) {
+      localStorage.setItem('ft_user_email', user.email);
+      if (user.avatar) {
+        localStorage.setItem(`ft_avatar_${user.email}`, user.avatar);
+      }
+    }
   }
 }
 
 function clearSession() {
   localStorage.removeItem('ft_token');
+  localStorage.removeItem('ft_profile');
 }
 
 async function api(path, options = {}) {
